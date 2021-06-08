@@ -1,0 +1,146 @@
+<html>
+<body>
+<script>
+const e = 2.718281828459045
+const input_data = new matrix([[0, 0, 1],
+	                           [1, 0, 0],
+                               [0, 0, 0],
+	                           [0, 1, 0],
+                               [1, 1, 1],
+                               [1, 1, 0]])
+const output_data = [0, 0, 0, 1, 1, 1]
+
+
+function sigmoid(x) {
+	return 1 / (1 + e ** (-x))
+}
+
+function matrix(data, w = 0, h = 0) {
+	this.data = data || [0]
+	this.w = w || this.data[0].length
+	this.h = h || this.data.length
+
+	this.initialize = function(char) {
+        this.data = new Array(this.h).fill(new Array(this.w).fill(char))
+		return this
+	}
+
+	this.randomize = function() {
+		this.data = new Array(this.h).fill(0).map(() => new Array(this.w).fill(0).map(Math.random))
+		return this
+	}
+	
+	this.stack = function () {
+		this.data = this.data.map((elem) => [elem])
+		this.w = 1
+		return this
+	}
+
+	this.row = function (index) {
+		return new matrix(this.data[index])
+	}
+
+	this.column = function (index) {
+		var col = new matrix([], this.h, 1)
+		for (var i = 0; i < this.h; i++) {
+			col.data.push(this.data[i][index])
+		}
+		return col
+	}
+
+	this.add = function (that) {
+		var sum = (new matrix([], that.w, this.h)).initialize(0)
+		for (var a = 0; a < this.h; a++) {
+			for (var b = 0; b < this.w; b++) {
+				sum.data[a][b] = this.data[a][b] + that.data[a][b]
+			}
+		}
+		return sum
+	}
+
+	this.dot = function (that) {
+		var product = (new matrix([], that.w, this.h)).initialize(1)
+		for (var a = 0; a < this.h; a++) {
+			for (var b = 0; b < that.w; b++) {
+				row = this.data[a]
+				col = that.column(b).data
+				for (var i = 0; i < this.w; i++) { // this.w = that.h
+					product.data[a][b] += row[i] * col[i]
+
+				}
+			}
+		}
+		product.h = this.h
+		product.w = that.w
+		return product
+	}
+
+    this.apply = function (func) {
+        for (var a = 0; a < this.h; a++) {
+            this.data[a] = this.data[a].map(func)
+        }
+        return this
+    }
+}
+
+/* model = [ neurons input layer,
+             neurons first hidden layer,
+             ... 
+             neurons output layer ] */
+
+function neural_network(model) { 
+    this.weights = []
+    this.biases = []
+
+    for (var i = 0; i < model.length - 1; i++) {
+        this.weights.push((new matrix([], model[i], model[i + 1])).randomize())
+        this.biases.push((new matrix([], 1, model[i + 1])).randomize())
+    }
+
+    this.vars = [this.weights, this.biases]
+    this.update = function (x, y, z, t, increment) { 
+        this.vars[x][y].data[z][t] += increment
+    }
+    
+    this.think = function (input) {
+        var thought = input.stack()
+        for (var i = 0; i < model.length - 1; i++) {
+            thought = this.weights[i].dot(thought).add(this.biases[i]).apply(sigmoid)
+        }
+        return thought
+    }
+
+    this.train = function (input_data, output_data, iterations) {
+        for (var i = 0; i < iterations; i++) {
+            // picking an input from the data 
+            w = Math.floor(Math.random() * input_data.h)
+            input = input_data.row(w); output = output_data[w]
+
+            // randomly picking which bias or weight to change
+            var x = Math.floor(Math.random() * 2)
+            var y = Math.floor(Math.random() * this.vars[x].length)
+            var z = Math.floor(Math.random() * this.vars[x][y].h)
+            var t = Math.floor(Math.random() * this.vars[x][y].w)
+
+            var error1 = Math.abs(this.think(input).data[0][0] - output)
+            var x1 = this.vars[x][y].data[z][t]
+            this.update(x, y, z, t, 0.01)
+            var error2 = Math.abs(this.think(input).data[0][0] - output)
+            var x2 = this.vars[x][y].data[z][t]
+            var derivative = (error2 - error1)/(x2 - x1)
+            this.update(x, y, z, t, - derivative - 0.01)
+            
+        }
+    } 
+}
+t23 = (new Date()).getTime()
+brain = (new neural_network([3,1]))
+brain.train(input_data, output_data, 1000)
+
+console.log(brain.think(new matrix([1,1,0])).data[0],0)
+console.log(brain.weights, brain.biases)
+
+
+</script>
+</body>
+</html>
